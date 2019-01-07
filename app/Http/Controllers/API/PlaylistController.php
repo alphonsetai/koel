@@ -12,6 +12,9 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * @group 4. Playlist management
+ */
 class PlaylistController extends Controller
 {
     private $playlistRepository;
@@ -24,7 +27,9 @@ class PlaylistController extends Controller
     }
 
     /**
-     * Gets all playlists by the current user.
+     * Get current user's playlists.
+     *
+     * @responseFile responses/playlist.index.json
      *
      * @return JsonResponse
      */
@@ -36,12 +41,25 @@ class PlaylistController extends Controller
     /**
      * Create a new playlist.
      *
+     * @bodyParam name string required Name of the playlist. Example: Sleepy Songs
+     * @bodyParam rules array An array of rules if creating a "smart playlist."
+     * @responseFile responses/playlist.store.json
+     *
      * @return JsonResponse
      */
     public function store(PlaylistStoreRequest $request)
     {
-        $playlist = $request->user()->playlists()->create($request->only('name'));
-        $playlist->songs()->sync((array) $request->songs);
+        /** @var Playlist $playlist */
+        $playlist = $request->user()->playlists()->create([
+            'name' => $request->name,
+            'rules' => $request->rules,
+        ]);
+
+        $songs = (array) $request->songs;
+
+        if ($songs) {
+            $playlist->songs()->sync($songs);
+        }
 
         $playlist->songs = $playlist->songs->pluck('id');
 
@@ -50,6 +68,9 @@ class PlaylistController extends Controller
 
     /**
      * Rename a playlist.
+     *
+     * @bodyParam name string required New name of the playlist. Example: Catchy Songs
+     * @responseFile responses/playlist.update.json
      *
      * @throws AuthorizationException
      *
@@ -65,8 +86,12 @@ class PlaylistController extends Controller
     }
 
     /**
-     * Sync a playlist with songs.
-     * Any songs that are not populated here will be removed from the playlist.
+     * Replace a playlist's content.
+     *
+     * Instead of adding or removing songs individually, a playlist's content is replaced entirely with an array of song IDs.
+     *
+     * @bodyParam songs array required An array of song IDs.
+     * @response []
      *
      * @throws AuthorizationException
      *
@@ -84,7 +109,9 @@ class PlaylistController extends Controller
     }
 
     /**
-     * Get a playlist's all songs.
+     * Get a playlist's songs.
+     *
+     * @response ["0146d01afb742b01f28ab8b556f9a75d", "c741133cb8d1982a5c60b1ce2a1e6e47", "..."]
      *
      * @throws AuthorizationException
      *
@@ -103,6 +130,8 @@ class PlaylistController extends Controller
 
     /**
      * Delete a playlist.
+     *
+     * @response []
      *
      * @throws Exception
      * @throws AuthorizationException
